@@ -1,12 +1,13 @@
 import os
-from google.genai import types
+
+
 def get_files_info(working_directory, directory="."):
     abs_working_dir = os.path.abspath(working_directory)
     abs_directory = ""
     abs_directory = os.path.abspath(os.path.join(working_directory, directory))
     if not os.path.isdir(abs_directory):
         return f'Error: "{directory}" is not in the working directory'
-    
+
     final_response = ""
     contents = os.listdir(abs_directory)
     for content in contents:
@@ -15,6 +16,7 @@ def get_files_info(working_directory, directory="."):
         size = os.path.getsize(content_path)
         final_response += f"- {content}: file_size={size} bytes, is_dir={is_dir}\n"
     return final_response
+
 
 schema_get_files_info = types.FunctionDeclaration(
     name="get_files_info",
