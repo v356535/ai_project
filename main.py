@@ -1,4 +1,6 @@
 import os
+from pyexpat.errors import messages
+from urllib import response
 from dotenv import load_dotenv
 from google import genai
 import sys
@@ -7,6 +9,7 @@ from functions.get_files_info import schema_get_files_info
 from functions.get_file_content import schema_get_file_content
 from functions.write_file import schema_write_file
 from functions.run_python_file import schema_run_python_file
+from call_function import call_function
 
 
 def main():
@@ -52,27 +55,38 @@ def main():
         tools=[available_functions], system_instruction=system_prompt
     )
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=messages,
-        config=config,
-    )
-    if response is None or response.usage_metadata is None:
-        print("response is malformed")
-        return
+    max_iters = 20
 
-    if verbose_flag:
-        print(f"User prompt: {prompt}")
-        print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-        print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+    for i in range(0, max_iters):
 
-    if response.function_calls:
-        for function_call_part in response.function_calls:
-            print(
-                f"Calling function: {function_call_part.name}({function_call_part.args})"
-            )
-    else:
-        print(response.text)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=messages,
+            config=config,
+        )
+        if response is None or response.usage_metadata is None:
+            print("response is malformed")
+            return
+
+        if verbose_flag:
+            print(f"User prompt: {prompt}")
+            print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+            print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+
+        if response.candidates:
+            for candidate in response.candidates:
+                if candidate is None or candidate.content is None:
+                    continue
+                messages.append(candidate.content)
+
+        if response.function_calls:
+            for function_call in response.function_calls:
+                result = call_function(function_call, verbose_flag)
+                messages.append(result)
+        else:
+            # final agent text message
+            print(response.text)
+            return
 
 
 main()
